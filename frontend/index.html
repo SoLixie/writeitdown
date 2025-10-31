@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Login - WriteItDown</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-container">
+    <h2>Login</h2>
+    <input type="text" id="loginNickname" placeholder="Nickname">
+    <p class="warning" id="loginNickWarning"></p>
+    <input type="password" id="loginPassword" placeholder="Password">
+    <p class="warning" id="loginPassWarning"></p>
+    <button class="btn primary-btn" id="loginBtn">Login</button>
+    <p style="margin-top:12px;text-align:center;">Don't have an account? <a href="register.html">Register</a></p>
+</div>
+
+<script>
+// Use the same port as your backend (3000)
+const API_URL = 'http://localhost:3000';
+
+document.getElementById('loginBtn').onclick = async () => {
+    const nick = document.getElementById('loginNickname').value.trim();
+    const pass = document.getElementById('loginPassword').value.trim();
+
+    document.getElementById('loginNickWarning').innerText = '';
+    document.getElementById('loginPassWarning').innerText = '';
+
+    if (!nick) { document.getElementById('loginNickWarning').innerText = "Enter nickname"; return; }
+    if (!pass) { document.getElementById('loginPassWarning').innerText = "Enter password"; return; }
+
+    try {
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nick, password: pass })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        // Store JWT and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('nickname', data.user.nickname);
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        alert('Login failed: ' + err.message);
+    }
+};
+
+// Allow Enter key to submit
+document.getElementById('loginPassword').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('loginBtn').click();
+    }
+});
+</script>
+
+<script>
+// Update the login function to use inline warnings
+document.getElementById('loginBtn').onclick = async () => {
+    const nick = document.getElementById('loginNickname').value.trim();
+    const pass = document.getElementById('loginPassword').value.trim();
+
+    // Hide all warnings first
+    document.querySelectorAll('.warning').forEach(w => w.classList.remove('show'));
+    
+    let hasError = false;
+    
+    if (!nick) { 
+        document.getElementById('loginNickWarning').classList.add('show');
+        document.getElementById('loginNickname').classList.add('error');
+        hasError = true;
+    }
+    if (!pass) { 
+        document.getElementById('loginPassWarning').classList.add('show');
+        document.getElementById('loginPassword').classList.add('error');
+        hasError = true;
+    }
+    
+    if (hasError) return;
+
+    try {
+        const res = await fetch(`${API_URL}/api/auth/login`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nick, password: pass })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('nickname', data.user.nickname);
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        // Show error as inline warning
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'warning show';
+        errorDiv.textContent = err.message;
+        errorDiv.style.marginTop = '16px';
+        document.querySelector('.auth-container').appendChild(errorDiv);
+        
+        // Remove error after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 5000);
+    }
+};
+
+// Remove error styling when user starts typing
+document.querySelectorAll('.auth-container input').forEach(input => {
+    input.addEventListener('input', function() {
+        this.classList.remove('error');
+        const warning = this.nextElementSibling;
+        if (warning && warning.classList.contains('warning')) {
+            warning.classList.remove('show');
+        }
+    });
+});
+</script>
+
+</body>
+</html>

@@ -1,0 +1,158 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>Register - WriteItDown</title>
+    <link rel="stylesheet" href="style.css">
+</head>
+<body>
+<div class="auth-container">
+    <h2>Register</h2>
+    <input type="text" id="regNickname" placeholder="Nickname">
+    <p class="warning" id="regNickWarning"></p>
+    <input type="password" id="regPassword" placeholder="Password">
+    <p class="warning" id="regPassWarning"></p>
+    <input type="password" id="regConfirmPassword" placeholder="Confirm Password">
+    <p class="warning" id="regConfirmWarning"></p>
+    <button class="btn primary-btn" id="registerBtn">Register</button>
+    <p style="margin-top:12px;text-align:center;">Already have an account? <a href="index.html">Login</a></p>
+</div>
+
+<script>
+// Use the same port as your backend (3000)
+const API_URL = 'http://localhost:3000';
+
+document.getElementById('registerBtn').onclick = async () => {
+    const nick = document.getElementById('regNickname').value.trim();
+    const pass = document.getElementById('regPassword').value.trim();
+    const confirmPass = document.getElementById('regConfirmPassword').value.trim();
+
+    document.getElementById('regNickWarning').innerText = '';
+    document.getElementById('regPassWarning').innerText = '';
+    document.getElementById('regConfirmWarning').innerText = '';
+
+    let valid = true;
+    if (!nick) { document.getElementById('regNickWarning').innerText = "Please enter nickname."; valid = false; }
+    if (!pass) { document.getElementById('regPassWarning').innerText = "Please enter password."; valid = false; }
+    if (!confirmPass) { document.getElementById('regConfirmWarning').innerText = "Please confirm password."; valid = false; }
+    if (!valid) return;
+
+    if (pass.length < 4) { document.getElementById('regPassWarning').innerText = "Password too short."; return; }
+    if (pass !== confirmPass) { document.getElementById('regConfirmWarning').innerText = "Passwords do not match."; return; }
+
+    try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nick, password: pass })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        // Save token and user data
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('nickname', data.user.nickname);
+
+        // Redirect directly to dashboard
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        alert('Registration failed: ' + err.message);
+    }
+};
+
+// Allow Enter key to submit
+document.getElementById('regConfirmPassword').addEventListener('keypress', function(e) {
+    if (e.key === 'Enter') {
+        document.getElementById('registerBtn').click();
+    }
+});
+</script>
+
+<script>
+// Update the register function to use inline warnings
+document.getElementById('registerBtn').onclick = async () => {
+    const nick = document.getElementById('regNickname').value.trim();
+    const pass = document.getElementById('regPassword').value.trim();
+    const confirmPass = document.getElementById('regConfirmPassword').value.trim();
+
+    // Hide all warnings first
+    document.querySelectorAll('.warning').forEach(w => w.classList.remove('show'));
+    document.querySelectorAll('input').forEach(i => i.classList.remove('error'));
+    
+    let hasError = false;
+    
+    if (!nick) { 
+        document.getElementById('regNickWarning').classList.add('show');
+        document.getElementById('regNickname').classList.add('error');
+        hasError = true;
+    }
+    if (!pass) { 
+        document.getElementById('regPassWarning').classList.add('show');
+        document.getElementById('regPassword').classList.add('error');
+        hasError = true;
+    }
+    if (!confirmPass) { 
+        document.getElementById('regConfirmWarning').classList.add('show');
+        document.getElementById('regConfirmPassword').classList.add('error');
+        hasError = true;
+    }
+    
+    if (hasError) return;
+
+    if (pass.length < 4) { 
+        document.getElementById('regPassWarning').textContent = "Password must be at least 4 characters long.";
+        document.getElementById('regPassWarning').classList.add('show');
+        document.getElementById('regPassword').classList.add('error');
+        return; 
+    }
+    if (pass !== confirmPass) { 
+        document.getElementById('regConfirmWarning').classList.add('show');
+        document.getElementById('regConfirmPassword').classList.add('error');
+        return; 
+    }
+
+    try {
+        const res = await fetch(`${API_URL}/api/auth/register`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ nickname: nick, password: pass })
+        });
+
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.message);
+
+        localStorage.setItem('token', data.token);
+        localStorage.setItem('nickname', data.user.nickname);
+        window.location.href = 'dashboard.html';
+    } catch (err) {
+        // Show error as inline warning
+        const errorDiv = document.createElement('div');
+        errorDiv.className = 'warning show';
+        errorDiv.textContent = err.message;
+        errorDiv.style.marginTop = '16px';
+        document.querySelector('.auth-container').appendChild(errorDiv);
+        
+        // Remove error after 5 seconds
+        setTimeout(() => {
+            if (errorDiv.parentNode) {
+                errorDiv.parentNode.removeChild(errorDiv);
+            }
+        }, 5000);
+    }
+};
+
+// Remove error styling when user starts typing
+document.querySelectorAll('.auth-container input').forEach(input => {
+    input.addEventListener('input', function() {
+        this.classList.remove('error');
+        const warning = this.nextElementSibling;
+        if (warning && warning.classList.contains('warning')) {
+            warning.classList.remove('show');
+        }
+    });
+});
+</script>
+
+</body>
+</html>
