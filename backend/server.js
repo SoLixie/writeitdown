@@ -136,3 +136,25 @@ if (require.main === module) {
   // Export for testing
   module.exports = app;
 }
+
+// Graceful shutdown handling
+process.on('SIGINT', () => {
+  console.log('\nReceived SIGINT. Shutting down gracefully...');
+  process.exit(0);
+});
+
+process.on('SIGTERM', () => {
+  console.log('Received SIGTERM. Shutting down gracefully...');
+  process.exit(0);
+});
+
+// Handle uncaught exceptions
+process.on('uncaughtException', (error) => {
+  console.error('Uncaught Exception:', error);
+  process.exit(1);
+});
+
+process.on('unhandledRejection', (reason, promise) => {
+  console.error('Unhandled Rejection at:', promise, 'reason:', reason);
+  process.exit(1);
+});
