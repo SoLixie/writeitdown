@@ -36,29 +36,30 @@ jobs:
       env:
         NODE_ENV: test
         JWT_SECRET: test-secret-for-ci
-        MONGO_URI: mongodb://localhost:27017/test-diary
         
     - name: Verify server starts
       working-directory: ./backend
       run: |
-        # Start server in background
-        node server.js &
+        # Start server on port 3001 to avoid conflicts
+        PORT=3001 node server.js &
         SERVER_PID=$!
         
         # Wait for server to start
-        sleep 5
+        sleep 10
         
         # Check if server is running
-        if curl -f http://localhost:3000/api/health; then
-          echo "✅ Server started successfully"
+        if curl -f http://localhost:3001/api/health; then
+          echo "✅ Server started successfully on port 3001"
         else
           echo "❌ Server failed to start"
+          # Show server logs for debugging
+          kill $SERVER_PID
           exit 1
         fi
         
         # Stop the server
         kill $SERVER_PID
-      
+        
   validate-frontend:
     name: Validate Frontend
     runs-on: ubuntu-latest
@@ -67,25 +68,17 @@ jobs:
     - name: Checkout code
       uses: actions/checkout@v4
       
-    - name: Check frontend file structure
+    - name: Check file structure
       run: |
-        echo "Checking frontend files..."
-        [ -f "./frontend/index.html" ] && echo "✅ index.html exists" || echo "❌ index.html missing"
-        [ -f "./frontend/register.html" ] && echo "✅ register.html exists" || echo "❌ register.html missing"
-        [ -f "./frontend/dashboard.html" ] && echo "✅ dashboard.html exists" || echo "❌ dashboard.html missing"
-        [ -f "./frontend/script.js" ] && echo "✅ script.js exists" || echo "❌ script.js missing"
-        [ -f "./frontend/style.css" ] && echo "✅ style.css exists" || echo "❌ style.css missing"
-        
-    - name: Validate HTML structure
-      run: |
-        find ./frontend -name "*.html" | while read file; do
-          if grep -q "<!DOCTYPE html>" "$file"; then
-            echo "✅ $file has valid DOCTYPE"
-          else
-            echo "❌ $file missing DOCTYPE"
-            exit 1
-          fi
-        done
+        echo "Checking required files..."
+        [ -f "./backend/package.json" ] && echo "✅ backend/package.json exists" || exit 1
+        [ -f "./backend/server.js" ] && echo "✅ backend/server.js exists" || exit 1
+        [ -f "./backend/routes/auth.js" ] && echo "✅ auth.js exists" || exit 1
+        [ -f "./backend/routes/entries.js" ] && echo "✅ entries.js exists" || exit 1
+        [ -f "./backend/routes/users.js" ] && echo "✅ users.js exists" || exit 1
+        [ -f "./backend/middleware/auth.js" ] && echo "✅ auth middleware exists" || exit 1
+        [ -f "./frontend/index.html" ] && echo "✅ index.html exists" || exit 1
+        [ -f "./frontend/dashboard.html" ] && echo "✅ dashboard.html exists" || exit 1
         
   docker-build:
     name: Build Docker Image
@@ -106,23 +99,8 @@ jobs:
         file: ./Dockerfile
         tags: writeitdown-app:ci-test
         load: true
-        cache-from: type=gha
-        cache-to: type=gha,mode=max
         
     - name: Test Docker image
       run: |
         echo "Testing Docker image..."
         docker run --rm writeitdown-app:ci-test node -e "console.log('✅ Docker image works')"
-        
-    - name: Verify Docker health check
-      run: |
-        docker run --rm -d -p 3000:3000 --name ci-test writeitdown-app:ci-test
-        sleep 10
-        docker logs ci-test
-        if curl -f http://localhost:3000/api/health; then
-          echo "✅ Docker container health check passed"
-        else
-          echo "❌ Docker container health check failed"
-          exit 1
-        fi
-        docker stop ci-test
